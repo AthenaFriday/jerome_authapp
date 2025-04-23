@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
+    xmlns:tools="http://schemas.android.com/tools"
+    package="com.android.authapp">
+
+    <!-- Add internet permission for OAuth and Firebase -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application
         android:allowBackup="true"
@@ -12,17 +17,43 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.AuthApp"
         tools:targetApi="31">
+
+        <!-- Main activity for the app -->
         <activity
-            android:name=".MainActivity"
+            android:name="com.android.authapp.MainActivity"
             android:exported="true"
             android:label="@string/app_name"
             android:theme="@style/Theme.AuthApp">
+
+            <!-- Launcher intent filter -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
+            <!-- OAuth redirect intent filter (for Firebase auth handler) -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="https"
+                    android:host="authapp-40fa2.firebaseapp.com"
+                    android:pathPrefix="/__/auth/handler" />
+            </intent-filter>
+
         </activity>
+
+        <!-- Meta-data for Firebase App ID -->
+        <meta-data
+            android:name="com.google.firebase.auth.APP_ID"
+            android:value="@string/firebase_app_id" />
+
+        <!-- Meta-data for Firebase Analytics Application ID -->
+        <meta-data
+            android:name="com.google.firebase.analytics.APPLICATION_ID"
+            android:value="@string/firebase_application_id" />
+
     </application>
 
 </manifest>

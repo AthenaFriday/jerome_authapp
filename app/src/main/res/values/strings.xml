@@ -1,4 +1,9 @@
 <resources>
     <string name="app_name">AuthApp</string>
-    <string name="default_web_client_id">62330044357-s4p9apkk2toruvqqr1tvfcdmlg309f3e. apps. googleusercontent. co</string>
+    <string name="default_web_client_id">541439438533-8nm522th85rn94k08c8r4rungnddiv17.apps.googleusercontent.com</string>
+    <string name="yahoo_client_id">dj0yJmk9YkF6QTVydHMxNktIJmQ9WVdrOVdGWnBZamQxVFZjbWNHbzlNQT09JnM9Y29uc3VtZXJzZWNyZXQmc3Y9MCZ4PTlm</string>
+    <string name="yahoo_client_secret">7b41307c75eba7d737093d987ebd87db35a0b158</string>
+    <string name="yahoo_redirect_uri">https://authapp-40fa2.firebaseapp.com/__/auth/handler</string>
+    <string name="firebase_app_id">1:541439438533:android:2b5e6b653892e3ba30caac</string>
+    <string name="firebase_application_id">1:541439438533:android:2b5e6b653892e3ba30caac</string>
 </resources>

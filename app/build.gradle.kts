@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.google.gms.google.services)
     alias(libs.plugins.google.firebase.crashlytics)
+
 }
 
 android {
@@ -64,4 +65,9 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
+    implementation(libs.okhttp)
+    implementation (libs.play.services.auth) // For Google Sign-In
+    implementation (libs.firebase.auth.ktx)  // Firebase Authentication
+    implementation (libs.okhttp.v490)  // For HTTP requests (for Yahoo OAuth2 token exchange)
+
 }

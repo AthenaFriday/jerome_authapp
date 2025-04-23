@@ -1,141 +1,115 @@
 package com.android.authapp
 
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.core.os.bundleOf
-import androidx.credentials.Credential
-import androidx.credentials.CredentialManager
-import androidx.credentials.CustomCredential
-import androidx.credentials.GetCredentialRequest
-import androidx.credentials.exceptions.GetCredentialException
-import androidx.lifecycle.lifecycleScope
-import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
-import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
-import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential.Companion.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
-import com.google.firebase.analytics.FirebaseAnalytics
-import com.google.firebase.analytics.ktx.analytics
+import androidx.compose.ui.unit.dp
+import com.android.authapp.ui.theme.ComposeSampleTheme
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInClient
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.auth.OAuthProvider
+import com.google.firebase.analytics.FirebaseAnalytics
+import com.google.firebase.analytics.ktx.analytics
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
-import kotlinx.coroutines.launch
-import com.android.authapp.ui.theme.ComposeSampleTheme
-
 
 class MainActivity : ComponentActivity() {
 
     private lateinit var analytics: FirebaseAnalytics
     private lateinit var auth: FirebaseAuth
-    private lateinit var credentialManager: CredentialManager
-
-    override fun onStart() {
-        super.onStart()
-        analytics.logEvent(
-            FirebaseAnalytics.Event.SELECT_CONTENT,
-            bundleOf(
-                FirebaseAnalytics.Param.ITEM_NAME to "InOnStart",
-                FirebaseAnalytics.Param.ITEM_CATEGORY to "2",
-                FirebaseAnalytics.Param.CONTENT_TYPE to "text",
-            )
-        )
-    }
-
-    override fun onResume() {
-        super.onResume()
-        analytics.logEvent(
-            FirebaseAnalytics.Event.SELECT_CONTENT,
-            bundleOf(
-                FirebaseAnalytics.Param.ITEM_NAME to "InOnResume",
-                FirebaseAnalytics.Param.ITEM_CATEGORY to "3",
-                FirebaseAnalytics.Param.CONTENT_TYPE to "text",
-            )
-        )
-    }
+    private lateinit var googleSignInClient: GoogleSignInClient
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         analytics = Firebase.analytics
         auth = Firebase.auth
-        credentialManager = CredentialManager.create(baseContext)
+
+        // Google Sign-In config
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(getString(R.string.default_web_client_id))
+            .requestEmail()
+            .build()
+        googleSignInClient = GoogleSignIn.getClient(this, gso)
 
         setContent {
             ComposeSampleTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        auth,
-                        modifier = Modifier.padding(innerPadding)
-                    ) {
-                        launchSignInSetup()
-                    }
+                    AuthScreen(
+                        auth = auth,
+                        modifier = Modifier.padding(innerPadding),
+                        onGoogleSignIn = { signInWithGoogle() },
+                        onYahooSignIn = { signInWithYahoo() }
+                    )
                 }
             }
         }
-
-        analytics.logEvent(
-            FirebaseAnalytics.Event.SELECT_CONTENT,
-            bundleOf(
-                FirebaseAnalytics.Param.ITEM_NAME to "InOnCreate",
-                FirebaseAnalytics.Param.ITEM_CATEGORY to "1",
-                FirebaseAnalytics.Param.CONTENT_TYPE to "text",
-            )
-        )
     }
 
-    private fun launchSignInSetup() {
-        val googleIdOption = GetSignInWithGoogleOption.Builder(baseContext.getString(R.string.default_web_client_id))
-//            .setServerClientId(defaultServiceClientId)
-            .build()
+    // Google Sign-In
+    private fun signInWithGoogle() {
+        val signInIntent = googleSignInClient.signInIntent
+        startActivityForResult(signInIntent, RC_SIGN_IN)
+    }
 
-//        GetGoogleIdOption.Builder()
-//            .setFilterByAuthorizedAccounts(true)
-//            .setServerClientId(baseContext.getString(R.string.default_web_client_id))
-//            .build()
-        val request = GetCredentialRequest.Builder()
-            .addCredentialOption(googleIdOption)
-            .build()
-
-        lifecycleScope.launch {
-            try {
-                // Launch Credential Manager UI
-                val result = credentialManager.getCredential(
-                    context = baseContext,
-                    request = request
-                )
-
-                // Extract credential from the result returned by Credential Manager
-                handleSignIn(result.credential)
-            } catch (e: GetCredentialException) {
-                Log.e("TAG", "Couldn't retrieve user's credentials: ${e.localizedMessage}")
-            }
+    // Yahoo Sign-In
+    private fun signInWithYahoo() {
+        val pendingResultTask = auth.pendingAuthResult
+        if (pendingResultTask != null) {
+            pendingResultTask
+                .addOnSuccessListener { result ->
+                    val user = result.user
+                    Log.d("YahooSignIn", "Pending sign-in success: ${user?.displayName}")
+                    Toast.makeText(this, "Welcome back, ${user?.displayName}", Toast.LENGTH_SHORT).show()
+                }
+                .addOnFailureListener { e ->
+                    Log.w("YahooSignIn", "Pending Yahoo sign-in failed", e)
+                    Toast.makeText(this, "Yahoo sign-in failed", Toast.LENGTH_SHORT).show()
+                }
+            return
         }
 
+        val provider = OAuthProvider.newBuilder("yahoo.com")
+        provider.addCustomParameter("prompt", "login") // Ensure prompt for login
+        provider.scopes = listOf("email", "profile", "openid") // Adding the necessary scopes for Yahoo
+
+        auth.startActivityForSignInWithProvider(this, provider.build())
+            .addOnSuccessListener { result ->
+                val user = result.user
+                Log.d("YahooSignIn", "Signed in with Yahoo: ${user?.displayName}")
+                Toast.makeText(this, "Welcome, ${user?.displayName}", Toast.LENGTH_SHORT).show()
+            }
+            .addOnFailureListener { e ->
+                Log.e("YahooSignIn", "Yahoo sign-in failed", e)
+                Toast.makeText(this, "Yahoo sign-in failed: ${e.message}", Toast.LENGTH_LONG).show()
+            }
     }
 
-    private fun handleSignIn(credential: Credential) {
-        // Check if credential is of type Google ID
-        if (credential is CustomCredential && credential.type == TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
-            // Create Google ID Token
-            val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(credential.data)
-
-            // Sign in to Firebase with using the token
-            firebaseAuthWithGoogle(googleIdTokenCredential.idToken)
-        } else {
-            Log.w("TAG", "Credential is not of type Google ID!")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == RC_SIGN_IN) {
+            val task = GoogleSignIn.getSignedInAccountFromIntent(data)
+            try {
+                val account = task.getResult(ApiException::class.java)
+                firebaseAuthWithGoogle(account.idToken!!)
+            } catch (e: ApiException) {
+                Log.w("GoogleSignIn", "Google sign-in failed", e)
+                Toast.makeText(this, "Google sign-in failed", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -144,72 +118,51 @@ class MainActivity : ComponentActivity() {
         auth.signInWithCredential(credential)
             .addOnCompleteListener(this) { task ->
                 if (task.isSuccessful) {
-                    // Sign in success, update UI with the signed-in user's information
-                    Log.d("TAG", "signInWithCredential:success")
-                    val user = auth.currentUser
-//                    updateUI(user)
+                    Log.d("GoogleSignIn", "Google sign-in success, UID: ${auth.currentUser?.uid}")
                 } else {
-                    // If sign in fails, display a message to the user
-                    Log.w("TAG", "signInWithCredential:failure", task.exception)
-//                    updateUI(null)
+                    Log.w("GoogleSignIn", "Google sign-in failure", task.exception)
+                    Toast.makeText(this, "Google sign-in failed", Toast.LENGTH_SHORT).show()
                 }
             }
     }
 
-
-}
-
-@Composable
-fun Greeting(
-    auth: FirebaseAuth,
-    modifier: Modifier = Modifier,
-    clicked: () -> Unit
-) {
-    Column {
-        for (i in 1..5) {
-            TwoTextView(i.toString(), modifier)
-        }
-        val context = LocalContext.current
-        Button(
-            onClick = clicked
-//            {
-//
-////            throw NullPointerException()
-////            auth.signInWithEmailAndPassword("adam@wrong.com", "haha123")
-////                .addOnCompleteListener { task ->
-////                    if (task.isSuccessful) {
-////                        Toast.makeText(context, "Congratulations?", Toast.LENGTH_SHORT).show()
-////                    } else {
-////                        Toast.makeText(context, "Get out?", Toast.LENGTH_SHORT).show()
-////                    }
-////                }
-//        }
+    @Composable
+    fun AuthScreen(
+        auth: FirebaseAuth,
+        modifier: Modifier = Modifier,
+        onGoogleSignIn: () -> Unit,
+        onYahooSignIn: () -> Unit
+    ) {
+        Column(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(32.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("Crash!")
+            Text("🚀 Welcome to Android", style = MaterialTheme.typography.headlineLarge)
+            Spacer(Modifier.height(32.dp))
+            Button(onClick = onGoogleSignIn, modifier = Modifier.fillMaxWidth()) {
+                Text("Sign in with Google")
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Button(onClick = onYahooSignIn, modifier = Modifier.fillMaxWidth()) {
+                Text("Sign in with Yahoo")
+            }
+            Spacer(Modifier.height(16.dp))
+            Text("Your credentials are secure 🔒", style = MaterialTheme.typography.bodySmall)
         }
     }
-}
 
-@Composable
-private fun TwoTextView(name: String, modifier: Modifier) {
-    Row {
-        Text(
-            text = "Hola $name!",
-            modifier = modifier
-        )
-        Text(
-            text = "Hola $name!",
-            modifier = modifier
-        )
+    @Preview(showBackground = true)
+    @Composable
+    fun AuthScreenPreview() {
+        ComposeSampleTheme {
+            AuthScreen(auth = Firebase.auth, onGoogleSignIn = {}, onYahooSignIn = {})
+        }
     }
-}
 
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-//    Scaffold { padding ->
-//        ComposeSampleTheme {
-////            Greeting("Android", modifier = Modifier.padding(padding))
-//        }
-//    }
+    companion object {
+        private const val RC_SIGN_IN = 9001
+    }
 }
