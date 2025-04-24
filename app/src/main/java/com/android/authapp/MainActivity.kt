@@ -66,7 +66,7 @@ class MainActivity : ComponentActivity() {
         startActivityForResult(signInIntent, RC_SIGN_IN)
     }
 
-    // Yahoo Sign-In
+    // ✅ Fixed Yahoo Sign-In
     private fun signInWithYahoo() {
         val pendingResultTask = auth.pendingAuthResult
         if (pendingResultTask != null) {
@@ -84,8 +84,10 @@ class MainActivity : ComponentActivity() {
         }
 
         val provider = OAuthProvider.newBuilder("yahoo.com")
-        provider.addCustomParameter("prompt", "login") // Ensure prompt for login
-        provider.scopes = listOf("email", "profile", "openid") // Adding the necessary scopes for Yahoo
+        provider.addCustomParameter("prompt", "login") // Optional: force login prompt
+
+        // ✅ Use only supported, standard OIDC scopes
+        provider.scopes = listOf("openid", "email", "profile")
 
         auth.startActivityForSignInWithProvider(this, provider.build())
             .addOnSuccessListener { result ->
